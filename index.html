@@ -413,11 +413,11 @@ const DEFAULT = {
     {label:"Email",url:"mailto:minggao2025@outlook.com"}
   ],
   projects:[
-    {id:"p1",title:"Rainwater Harvester System",desc:"An off-grid system that captures, treats, and delivers clean drinking water for a remote coastal community in Van Anda, BC. Designed with a team of six and tuned for cost, safety, and sustainability.",image:"assets/rainwater.png",imageId:null,link:"",tags:["Systems Design","Sustainability","Team of 6"]},
+    {id:"p1",title:"Rainwater Harvester System",desc:"An off-grid system that captures, treats, and delivers clean drinking water for a remote coastal community in Van Anda, BC. Designed with a team of six and tuned for cost, safety, and sustainability.",image:"assets/rainwater.png",imageId:null,link:"assets/rainwater.pdf",tags:["Systems Design","Sustainability","Team of 6"]},
     {id:"studio",title:"Portfolio Studio",desc:"The tool that built this site. A single-file, no-build studio with a drag-and-drop layout editor, live preview, theming, and 3D model support. Ongoing side project.",image:null,imageId:null,link:"studio.html",tags:["Ongoing","JavaScript","Web"]},
-    {id:"p2",title:"Autonomous Retrieval Claw",desc:"A mechanical claw that automatically grabs and retrieves objects. Arduino and servo control, C firmware, and a sheet-metal build taken from concept sketches to final prototype.",image:"assets/claw.png",imageId:null,link:"",tags:["Arduino","C","Mechanical Design"]},
-    {id:"p3",title:"How to Snowboard From Zero",desc:"A beginner's guide I wrote and designed after learning to ride in a single season, from first fall to a black-diamond run. Covers gear, safety, and the core skills.",image:"assets/snowboard.png",imageId:null,link:"",tags:["Editorial","Writing","Illustration"]},
-    {id:"p4",title:"Event Menu Design",desc:"A short, playful menu designed for an event, from appetizers to desserts. A small exercise in type and layout.",image:"assets/menu.png",imageId:null,link:"",tags:["Graphic Design","Layout"]}
+    {id:"p2",title:"Autonomous Retrieval Claw",desc:"A mechanical claw that automatically grabs and retrieves objects. Arduino and servo control, C firmware, and a sheet-metal build taken from concept sketches to final prototype.",image:"assets/claw.png",imageId:null,link:"assets/claw.pdf",tags:["Arduino","C","Mechanical Design"]},
+    {id:"p3",title:"How to Snowboard From Zero",desc:"A beginner's guide I wrote and designed after learning to ride in a single season, from first fall to a black-diamond run. Covers gear, safety, and the core skills.",image:"assets/snowboard.png",imageId:null,link:"assets/snowboard.pdf",tags:["Editorial","Writing","Illustration"]},
+    {id:"p4",title:"Event Menu Design",desc:"A short, playful menu designed for an event, from appetizers to desserts. A small exercise in type and layout.",image:"assets/menu.png",imageId:null,link:"assets/menu.pdf",tags:["Graphic Design","Layout"]}
   ],
   theme:{
     preset:"gallery", mode:"light",
@@ -974,7 +974,7 @@ function buildModal(pr){
           <div class="pm-desc">${body||'<p>No description yet.</p>'}</div>
           ${highlights?`<div class="pm-hl">${highlights}</div>`:''}
           <div class="pm-actions">
-            ${pr.link?`<a class="btn primary" href="${esc(pr.link)}" target="_blank" rel="noopener">Visit live<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 4h6v6m0-6L10 14M5 5v14h14"/></svg></a>`:''}
+            ${pr.link?`<a class="btn primary" href="${esc(pr.link)}" target="_blank" rel="noopener">View project<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 4h6v6m0-6L10 14M5 5v14h14"/></svg></a>`:''}
             <button class="btn" onclick="closeProject()">Close</button>
           </div>
         </div>
