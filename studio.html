@@ -306,6 +306,35 @@ input[type=file]{display:none}
   #main:has(#preview-wrap.editmode){grid-template-columns:1fr}
   #main:has(#preview-wrap.editmode) #panel{display:none}
 }
+
+/* 6 tabs — tighten so labels fit */
+.tabs .tab{font-size:11px;padding:10px 4px;gap:5px}
+.tabs .tab svg{width:14px;height:14px}
+
+/* AI ASSISTANT */
+.ai-wrap{display:flex;flex-direction:column;min-height:0}
+.ai-log{height:min(56vh,540px);overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding:6px 2px 10px}
+.ai-msg{max-width:88%;padding:9px 12px;border-radius:13px;font-size:12.8px;line-height:1.5;white-space:pre-wrap;word-break:break-word}
+.ai-msg.user{align-self:flex-end;background:color-mix(in srgb,var(--acc) 20%,transparent);border:1px solid color-mix(in srgb,var(--acc) 42%,transparent);color:var(--txt);border-bottom-right-radius:4px}
+.ai-msg.bot{align-self:flex-start;background:var(--surf2);border:1px solid var(--bd);border-bottom-left-radius:4px}
+.ai-empty{color:var(--mut);font-size:12.5px;text-align:center;line-height:1.6;padding:22px 12px}
+.ai-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:9px}
+.ai-chip{font-size:11px;padding:5px 10px;border-radius:100px;background:var(--surf);border:1px solid var(--bd);cursor:pointer;color:var(--mut);text-align:left;transition:.14s}
+.ai-chip:hover{color:var(--txt);border-color:var(--acc)}
+.ai-inrow{display:flex;gap:8px;align-items:flex-end;padding-top:10px;border-top:1px solid var(--bd)}
+.ai-inrow textarea{flex:1;resize:none;min-height:42px;max-height:130px;line-height:1.45}
+.ai-send{flex-shrink:0;width:42px;height:42px;border-radius:11px;border:none;background:var(--acc);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.16s}
+.ai-send:hover{filter:brightness(1.08)}
+.ai-send:disabled{opacity:.45;cursor:default}
+.ai-send svg{width:17px;height:17px}
+
+/* PUBLISH */
+.pub-card{border:1px solid var(--bd);border-radius:13px;padding:15px;margin-bottom:12px;background:var(--surf)}
+.pub-card h4{font-family:var(--display);font-weight:700;font-size:13.5px;letter-spacing:-.01em;margin-bottom:6px}
+.pub-card p{font-size:12.3px;color:var(--mut);line-height:1.55;margin-bottom:11px}
+.pub-card code{font-family:var(--mono);font-size:11px;background:var(--surf2);padding:1px 5px;border-radius:5px}
+.pub-step{display:flex;gap:9px;font-size:12px;color:var(--mut);line-height:1.5}
+.pub-step b{color:var(--acc);font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;flex-shrink:0;padding-top:1px}
 </style>
 </head>
 <body>
@@ -328,12 +357,16 @@ input[type=file]{display:none}
         <button class="tab" data-tab="theme"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 000 18c1.5 0 2-1 2-2s-1-1.5-1-2.5S15 14 16 14h2a3 3 0 003-3c0-4.4-4-8-9-8z"/></svg>Theme</button>
         <button class="tab" data-tab="files"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5a2 2 0 012-2h4l2 3h6a2 2 0 012 2v9a2 2 0 01-2 2H6a2 2 0 01-2-2z"/></svg>Files</button>
         <button class="tab" data-tab="canvas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>Layout</button>
+        <button class="tab" data-tab="ai"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3l1.8 4.4L18 9l-4.2 1.6L12 15l-1.8-4.4L6 9l4.2-1.6L12 3z"/><path d="M18.5 14l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9.9-2.1z"/></svg>AI</button>
+        <button class="tab" data-tab="publish"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 010 18 15 15 0 010-18z"/></svg>Publish</button>
       </div>
       <div class="tabwrap">
         <div class="pane on" id="pane-content"></div>
         <div class="pane" id="pane-theme"></div>
         <div class="pane" id="pane-files"></div>
         <div class="pane" id="pane-canvas"></div>
+        <div class="pane" id="pane-ai"></div>
+        <div class="pane" id="pane-publish"></div>
       </div>
     </div>
 
@@ -1704,6 +1737,7 @@ function switchTab(name){
   document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on',t.dataset.tab===name));
   document.querySelectorAll('.pane').forEach(p=>p.classList.toggle('on',p.id==='pane-'+name));
   if(name==='content')buildContent();if(name==='theme')buildTheme();if(name==='files')buildFiles();if(name==='canvas')buildCanvas();
+  if(name==='ai')buildAI();if(name==='publish')buildPublish();
 }
 document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>switchTab(t.dataset.tab));
 document.querySelectorAll('.vp button[data-vp]').forEach(b=>b.onclick=()=>{
@@ -1726,6 +1760,142 @@ function doImport(){const inp=document.createElement('input');inp.type='file';in
     if(Array.isArray(data.assets)){for(const rec of data.assets){ASSETS[rec.id]=rec;await putAsset(rec)}}
     persist();pushPreview();switchTab('content');toast('Imported successfully')}catch(err){toast('Invalid file')}};
   inp.click();
+}
+
+/* ================= AI ASSISTANT (Claude, direct-from-browser) ================= */
+let AI_MODEL='claude-opus-4-8';
+let AI_HISTORY=[];      // messages sent to the API (assistant content is the raw JSON reply)
+let AI_TRANSCRIPT=[];   // {role,text} for the on-screen chat
+const AI_SYSTEM=`You are a friendly, concise portfolio-building assistant embedded in a live portfolio studio. You help the user build and refine a personal portfolio by editing its config, and the preview updates instantly.
+
+Reply with ONLY a single minified JSON object. No markdown, no code fences:
+{"reply":"<1-3 short plain-text sentences to the user>","patch":{ ...only the fields you are changing... }}
+
+The patch may contain any of:
+- "profile": {"name","role","tagline","about","location","email","skills":["..."],"stats":[{"num","lbl"}]}
+- "projects": the FULL array of projects (include ALL of them, even unchanged). Each: {"id","title","desc","tags":["..."],"link"}. Keep existing "id" values; for a new project invent a short unique id.
+- "theme": {"accent":"#hex","mode":"light"|"dark"}
+- "layout": {"heroStyle":"split"|"solo"|"centered"}
+
+Rules: include only keys you are actually changing (an empty patch {} is fine when you are only asking a question). Write specific, concrete copy. No cliches (elevate, seamless, unleash, passionate, game-changing). Never use em dashes or en dashes; use commas or periods. Do not invent fake metrics, awards, or numbers. If you need more information, ask briefly in "reply" and return an empty patch.`;
+
+function buildAI(){
+  const pane=document.getElementById('pane-ai');
+  const hasKey=!!getApiKey();
+  const chips=['Write my hero: I am a <role> who <does X and Y>','Make the tone warmer and more personal','Draft 3 project ideas for my field','Suggest a color accent that fits me','Tighten and de-cliche all my copy'];
+  pane.innerHTML=`
+    <div class="ai-wrap">
+      <div class="glabel" style="margin-bottom:10px">AI assistant ✦
+        <select id="aiModel" style="margin-left:auto;width:auto;max-width:160px;padding:5px 8px;font-size:11.5px">
+          <option value="claude-opus-4-8">Opus 4.8 · best</option>
+          <option value="claude-sonnet-4-6">Sonnet 4.6 · balanced</option>
+          <option value="claude-haiku-4-5">Haiku 4.5 · fast</option>
+        </select>
+      </div>
+      ${hasKey?'':`<div class="note show" style="color:var(--mut);margin-bottom:9px">Add your Anthropic API key in the <b style="cursor:pointer;color:var(--acc)" onclick="switchTab('files')">Files</b> tab to enable the assistant. The key stays in your browser and calls go straight to Anthropic.</div>`}
+      <div class="ai-log" id="aiLog"></div>
+      <div class="ai-chips">${chips.map(t=>`<button class="ai-chip" onclick="aiQuick(this.textContent)">${esc(t)}</button>`).join('')}</div>
+      <div class="ai-inrow">
+        <textarea id="aiInput" placeholder="Tell me about yourself, or ask for a change…" oninput="aiGrow(this)" onkeydown="aiKey(event)"></textarea>
+        <button class="ai-send" id="aiSend" onclick="aiSend()" title="Send" ${hasKey?'':'disabled'}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg></button>
+      </div>
+    </div>`;
+  const sel=document.getElementById('aiModel'); sel.value=AI_MODEL; sel.onchange=e=>AI_MODEL=e.target.value;
+  aiRender();
+}
+function aiRender(){
+  const log=document.getElementById('aiLog'); if(!log)return;
+  if(!AI_TRANSCRIPT.length){log.innerHTML=`<div class="ai-empty">Hi — describe yourself or what you'd like to change, and I'll build it into your portfolio live.<br>Try one of the suggestions below.</div>`;return;}
+  log.innerHTML=AI_TRANSCRIPT.map(m=>`<div class="ai-msg ${m.role==='user'?'user':'bot'}">${esc(m.text)}</div>`).join('');
+  log.scrollTop=log.scrollHeight;
+}
+function aiGrow(t){t.style.height='auto';t.style.height=Math.min(130,t.scrollHeight)+'px'}
+function aiKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();aiSend()}}
+function aiQuick(t){const i=document.getElementById('aiInput');if(!i)return;i.value=t;i.focus();aiGrow(i)}
+async function aiSend(){
+  const inp=document.getElementById('aiInput'); if(!inp)return;
+  const text=(inp.value||'').trim(); if(!text)return;
+  const key=getApiKey(); if(!key){toast('Add your API key in the Files tab first');switchTab('files');return;}
+  AI_TRANSCRIPT.push({role:'user',text}); AI_HISTORY.push({role:'user',content:text});
+  inp.value=''; aiGrow(inp);
+  AI_TRANSCRIPT.push({role:'assistant',text:'…'}); const idx=AI_TRANSCRIPT.length-1; aiRender();
+  const send=document.getElementById('aiSend'); if(send)send.disabled=true;
+  try{
+    const raw=await aiCall(key);
+    let obj=null; try{obj=parseLoose(raw)}catch(e){}
+    if(obj&&obj.patch)aiApplyPatch(obj.patch);
+    const reply=(obj&&typeof obj.reply==='string'&&obj.reply.trim())?obj.reply.trim():(obj?'Done — I updated your portfolio.':raw);
+    AI_TRANSCRIPT[idx]={role:'assistant',text:reply};
+    AI_HISTORY.push({role:'assistant',content:raw});
+    if(AI_HISTORY.length>16)AI_HISTORY=AI_HISTORY.slice(-16);
+  }catch(err){
+    AI_TRANSCRIPT[idx]={role:'assistant',text:'That request failed ('+((err&&err.message)||err)+'). Check your API key or pick a different model, then try again.'};
+  }finally{
+    aiRender(); const s=document.getElementById('aiSend'); if(s)s.disabled=false;
+  }
+}
+async function aiCall(key){
+  const p=CONFIG.profile||{}, t=CONFIG.theme||{};
+  const snap={profile:{name:p.name,role:p.role,tagline:p.tagline,about:p.about,location:p.location,email:p.email,skills:p.skills,stats:p.stats},
+    projects:(CONFIG.projects||[]).map(x=>({id:x.id,title:x.title,desc:x.desc||x.summary||'',tags:x.tags,link:x.link})),
+    theme:{accent:t.accent,mode:t.mode},layout:CONFIG.layout};
+  const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{
+    'content-type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+    body:JSON.stringify({model:AI_MODEL||'claude-opus-4-8',max_tokens:3072,
+      system:AI_SYSTEM+'\n\nCURRENT PORTFOLIO JSON:\n'+JSON.stringify(snap),
+      messages:AI_HISTORY.map(m=>({role:m.role,content:m.content}))})});
+  if(!res.ok){const t2=await res.text().catch(()=>'');throw new Error('HTTP '+res.status+' '+t2.slice(0,140));}
+  const data=await res.json();
+  return (data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('').trim();
+}
+function aiApplyPatch(patch){
+  if(!patch||typeof patch!=='object')return; let touched=false;
+  if(patch.profile&&typeof patch.profile==='object'){Object.assign(CONFIG.profile,patch.profile);touched=true;}
+  if(Array.isArray(patch.projects)){const prev=CONFIG.projects||[];
+    CONFIG.projects=patch.projects.map(pr=>{const old=prev.find(o=>o.id===pr.id)||{};
+      return {id:pr.id||uid(),title:pr.title!=null?pr.title:(old.title||'Untitled'),desc:pr.desc||pr.description||old.desc||'',summary:pr.summary||old.summary||'',
+        image:pr.image!==undefined?pr.image:(old.image!=null?old.image:null),imageId:pr.imageId!==undefined?pr.imageId:(old.imageId||null),modelId:pr.modelId!==undefined?pr.modelId:(old.modelId||null),
+        link:pr.link!==undefined?pr.link:(old.link||''),tags:Array.isArray(pr.tags)?pr.tags.slice(0,6):(old.tags||[]),highlights:Array.isArray(pr.highlights)?pr.highlights:(old.highlights||[])};});
+    touched=true;}
+  if(patch.theme&&typeof patch.theme==='object'){Object.assign(CONFIG.theme,patch.theme);touched=true;}
+  if(patch.layout&&typeof patch.layout==='object'){Object.assign(CONFIG.layout,patch.layout);touched=true;}
+  if(touched){sync();toast('Portfolio updated ✦')}
+}
+
+/* ================= PUBLISH (generate a public site) ================= */
+function buildPublish(){
+  const pane=document.getElementById('pane-publish');
+  pane.innerHTML=`
+    <div class="grp"><label>Publish your site</label></div>
+    <div class="pub-card">
+      <h4>1 · Download your site</h4>
+      <p>Bakes your current content and any uploaded images into a single self-contained <b>index.html</b> that runs anywhere — no studio, no server needed.</p>
+      <button class="tbtn primary" style="width:100%;justify-content:center" onclick="downloadStandalone()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg>Download index.html</button>
+    </div>
+    <div class="pub-card">
+      <h4>2 · Put it online (free)</h4>
+      <p>Drag the downloaded file onto Netlify Drop and you get an instant public link. No account needed to try it.</p>
+      <button class="tbtn" style="width:100%;justify-content:center" onclick="openNetlify()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 010 18 15 15 0 010-18z"/></svg>Open Netlify Drop</button>
+      <div class="pub-step" style="margin-top:11px"><b>tip</b><span>Uploaded images are baked into the file. If any project uses an image path like <code>assets/…</code>, drag the whole project folder onto Netlify instead so those files come along.</span></div>
+    </div>
+    <div class="pub-card">
+      <h4>3 · Or export the data</h4>
+      <p>Save a portable <b>.json</b> of everything (content plus assets) to back up or move between machines. Re-load it any time with Import.</p>
+      <button class="tbtn" style="width:100%;justify-content:center" onclick="doExport()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21V9m0 0l-4 4m4-4l4 4M5 3h14"/></svg>Export .json</button>
+    </div>`;
+}
+function openNetlify(){window.open('https://app.netlify.com/drop','_blank','noopener');toast('Drag your downloaded index.html onto the page')}
+async function downloadStandalone(){
+  toast('Building your site…');
+  let src; try{src=await fetch('index.html',{cache:'no-store'}).then(r=>r.text());}catch(e){toast('Could not read index.html');return;}
+  const safe=o=>JSON.stringify(o).replace(/<\//g,'<\\/');
+  const boot='<script>window.PORTFOLIO_CONFIG='+safe(CONFIG)+';window.PORTFOLIO_ASSETS='+safe(assetMap())+';window.PORTFOLIO_ASSET_META='+safe(assetMetaMap())+';<\/script>';
+  const html=src.replace(/<body[^>]*>/,m=>m+'\n'+boot);
+  const blob=new Blob([html],{type:'text/html'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='index.html';
+  document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+  toast('Downloaded your standalone site');
 }
 
 /* ================= BOOT ================= */

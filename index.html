@@ -1041,6 +1041,12 @@ window.addEventListener('message',e=>{
 try{const bc=new BroadcastChannel('pf-sync');bc.onmessage=e=>{if((e.data||{}).type==='update')storagePath();};}catch(e){}
 
 (async function boot(){
+  // Baked standalone site (produced by the studio's Publish tab): render inline config, no storage/network.
+  if(window.PORTFOLIO_CONFIG){
+    if(window.PORTFOLIO_ASSET_META)Object.assign(ASSET_META,window.PORTFOLIO_ASSET_META);
+    render(window.PORTFOLIO_CONFIG,window.PORTFOLIO_ASSETS||{});
+    return;
+  }
   if(EMBEDDED){
     try{window.parent.postMessage({type:'portfolio:ready'},'*');}catch(e){}
     setTimeout(()=>{if(!gotParent)storagePath();},450);
