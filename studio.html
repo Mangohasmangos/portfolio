@@ -1763,9 +1763,30 @@ function doImport(){const inp=document.createElement('input');inp.type='file';in
 }
 
 /* ================= AI ASSISTANT (Claude, direct-from-browser) ================= */
-let AI_MODEL='claude-opus-4-8';
-let AI_HISTORY=[];      // messages sent to the API (assistant content is the raw JSON reply)
+let AI_HISTORY=[];      // messages sent to the model (assistant content = raw JSON reply)
 let AI_TRANSCRIPT=[];   // {role,text} for the on-screen chat
+let WEBLLM_ENGINE=null, WEBLLM_MODEL=null;   // cached in-browser model
+
+/* Providers: Claude, any OpenAI-compatible endpoint, or in-browser WebLLM (no key). */
+const AI_PROVIDERS={
+  anthropic:{name:'Claude (Anthropic)',kind:'anthropic',needsKey:true,models:['claude-opus-4-8','claude-sonnet-4-6','claude-haiku-4-5'],hint:'Uses your Anthropic key (shared with auto-format). Key stays in your browser.'},
+  openrouter:{name:'OpenRouter · open models',kind:'openai',url:'https://openrouter.ai/api/v1/chat/completions',needsKey:true,models:['meta-llama/llama-3.3-70b-instruct','deepseek/deepseek-chat','qwen/qwen-2.5-72b-instruct','google/gemma-2-27b-it'],hint:'Free key at openrouter.ai/keys. Hundreds of open models, several free.'},
+  groq:{name:'Groq · fast Llama',kind:'openai',url:'https://api.groq.com/openai/v1/chat/completions',needsKey:true,models:['llama-3.3-70b-versatile','llama-3.1-8b-instant','qwen-2.5-32b'],hint:'Free key at console.groq.com/keys. Very fast open models.'},
+  local:{name:'Local · Ollama / LM Studio',kind:'openai',needsKey:false,needsUrl:true,defaultUrl:'http://localhost:11434/v1/chat/completions',models:['llama3.1','qwen2.5','mistral'],hint:'Runs on your machine, no key. Ollama: set OLLAMA_ORIGINS to allow this site. LM Studio uses http://localhost:1234/v1/chat/completions.'},
+  custom:{name:'Custom · OpenAI-compatible',kind:'openai',needsKey:true,needsUrl:true,defaultUrl:'',models:[''],hint:'Any OpenAI-compatible API (Together, Fireworks, DeepInfra…). Paste the full /chat/completions URL.'},
+  webllm:{name:'In-browser · no key',kind:'webllm',needsKey:false,models:['Llama-3.2-3B-Instruct-q4f16_1-MLC','Qwen2.5-3B-Instruct-q4f16_1-MLC','Llama-3.1-8B-Instruct-q4f16_1-MLC'],hint:'Runs fully in your browser via WebGPU (Chrome/Edge). No key. First use downloads the model (~1-4GB).'}
+};
+function aiStore(){try{return JSON.parse(localStorage.getItem('pf.ai.v1'))||{}}catch(e){return{}}}
+function aiSave(s){try{localStorage.setItem('pf.ai.v1',JSON.stringify(s))}catch(e){}}
+function aiSet(section,id,val){const s=aiStore();if(section){s[section]=s[section]||{};s[section][id]=val;}else{s[id]=val;}aiSave(s);}
+function aiCfg(){
+  const s=aiStore(); const id=AI_PROVIDERS[s.provider]?s.provider:'anthropic'; const P=AI_PROVIDERS[id];
+  const key=id==='anthropic'?getApiKey():((s.key&&s.key[id])||'');
+  const url=P.needsUrl?((s.url&&s.url[id])||P.defaultUrl||''):(P.url||'');
+  const model=(s.model&&s.model[id])||(P.models&&P.models[0])||'';
+  return {id,kind:P.kind,name:P.name,needsKey:P.needsKey,needsUrl:P.needsUrl,key,url,model};
+}
+function aiReady(){const c=aiCfg();if(c.kind==='webllm')return !!navigator.gpu;if(c.needsKey&&!c.key)return false;if(c.needsUrl&&!c.url)return false;return true;}
 const AI_SYSTEM=`You are a friendly, concise portfolio-building assistant embedded in a live portfolio studio. You help the user build and refine a personal portfolio by editing its config, and the preview updates instantly.
 
 Reply with ONLY a single minified JSON object. No markdown, no code fences:
@@ -1781,27 +1802,48 @@ Rules: include only keys you are actually changing (an empty patch {} is fine wh
 
 function buildAI(){
   const pane=document.getElementById('pane-ai');
-  const hasKey=!!getApiKey();
   const chips=['Write my hero: I am a <role> who <does X and Y>','Make the tone warmer and more personal','Draft 3 project ideas for my field','Suggest a color accent that fits me','Tighten and de-cliche all my copy'];
   pane.innerHTML=`
     <div class="ai-wrap">
-      <div class="glabel" style="margin-bottom:10px">AI assistant ✦
-        <select id="aiModel" style="margin-left:auto;width:auto;max-width:160px;padding:5px 8px;font-size:11.5px">
-          <option value="claude-opus-4-8">Opus 4.8 · best</option>
-          <option value="claude-sonnet-4-6">Sonnet 4.6 · balanced</option>
-          <option value="claude-haiku-4-5">Haiku 4.5 · fast</option>
-        </select>
-      </div>
-      ${hasKey?'':`<div class="note show" style="color:var(--mut);margin-bottom:9px">Add your Anthropic API key in the <b style="cursor:pointer;color:var(--acc)" onclick="switchTab('files')">Files</b> tab to enable the assistant. The key stays in your browser and calls go straight to Anthropic.</div>`}
+      <div id="aiCfg"></div>
       <div class="ai-log" id="aiLog"></div>
       <div class="ai-chips">${chips.map(t=>`<button class="ai-chip" onclick="aiQuick(this.textContent)">${esc(t)}</button>`).join('')}</div>
       <div class="ai-inrow">
         <textarea id="aiInput" placeholder="Tell me about yourself, or ask for a change…" oninput="aiGrow(this)" onkeydown="aiKey(event)"></textarea>
-        <button class="ai-send" id="aiSend" onclick="aiSend()" title="Send" ${hasKey?'':'disabled'}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg></button>
+        <button class="ai-send" id="aiSend" onclick="aiSend()" title="Send"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg></button>
       </div>
     </div>`;
-  const sel=document.getElementById('aiModel'); sel.value=AI_MODEL; sel.onchange=e=>AI_MODEL=e.target.value;
-  aiRender();
+  renderAiCfg(); aiRender();
+}
+function renderAiCfg(){
+  const box=document.getElementById('aiCfg'); if(!box)return;
+  const s=aiStore(); const pid=AI_PROVIDERS[s.provider]?s.provider:'anthropic'; const P=AI_PROVIDERS[pid]; const c=aiCfg();
+  const provOpts=Object.keys(AI_PROVIDERS).map(k=>`<option value="${k}" ${k===pid?'selected':''}>${AI_PROVIDERS[k].name}</option>`).join('');
+  const selModel=(pid==='anthropic'||pid==='webllm');
+  const modelCtl=selModel
+    ? `<select id="aiModelSel">${P.models.map(m=>`<option value="${m}" ${m===c.model?'selected':''}>${m}</option>`).join('')}</select>`
+    : `<input id="aiModelInp" list="aiModelList" value="${esc(c.model)}" placeholder="model id"><datalist id="aiModelList">${P.models.filter(Boolean).map(m=>`<option value="${m}">`).join('')}</datalist>`;
+  box.innerHTML=`
+    <div class="glabel" style="margin-bottom:9px">AI assistant ✦</div>
+    <div class="f"><span>Provider</span><select id="aiProv">${provOpts}</select></div>
+    <div class="f"><span>Model</span>${modelCtl}</div>
+    ${P.needsUrl?`<div class="f"><span>Endpoint URL</span><input id="aiUrl" value="${esc(c.url)}" placeholder="${esc(P.defaultUrl||'https://…/v1/chat/completions')}"></div>`:''}
+    ${P.needsKey?`<div class="f"><span>${pid==='anthropic'?'Anthropic':'Provider'} API key</span><input type="password" id="aiKey" value="${esc(c.key)}" placeholder="stored only in your browser" autocomplete="off"></div>`:''}
+    ${pid==='webllm'?`<button class="tbtn" style="width:100%;justify-content:center;margin:2px 0 8px" onclick="webllmLoad()">${WEBLLM_MODEL===c.model?'Model ready ✓':'Load model in browser'}</button>`:''}
+    <div style="font-size:11px;color:var(--mut);line-height:1.5;margin-bottom:10px">${esc(P.hint)}${(pid==='webllm'&&!navigator.gpu)?' <b style="color:#ff9a9a">WebGPU not detected in this browser.</b>':''}</div>`;
+  document.getElementById('aiProv').onchange=e=>{aiSet(null,'provider',e.target.value);renderAiCfg();};
+  const ms=document.getElementById('aiModelSel'); if(ms)ms.onchange=e=>aiSet('model',pid,e.target.value);
+  const mi=document.getElementById('aiModelInp'); if(mi)mi.oninput=e=>aiSet('model',pid,e.target.value.trim());
+  const ku=document.getElementById('aiUrl'); if(ku)ku.oninput=e=>{aiSet('url',pid,e.target.value.trim());aiUpdateSend();};
+  const kk=document.getElementById('aiKey'); if(kk)kk.oninput=e=>{const v=e.target.value.trim(); if(pid==='anthropic')setApiKey(v); else aiSet('key',pid,v); aiUpdateSend();};
+  aiUpdateSend();
+}
+function aiUpdateSend(){const b=document.getElementById('aiSend'); if(b)b.disabled=!aiReady();}
+async function webllmLoad(){
+  const c=aiCfg(); if(c.kind!=='webllm')return;
+  if(!navigator.gpu){toast('WebGPU not available — use Chrome or Edge');return;}
+  try{ await webllmEnsure(c.model,txt=>toast(txt)); toast('In-browser model ready'); renderAiCfg(); }
+  catch(e){ toast('Model load failed: '+((e&&e.message)||e)); }
 }
 function aiRender(){
   const log=document.getElementById('aiLog'); if(!log)return;
@@ -1815,13 +1857,13 @@ function aiQuick(t){const i=document.getElementById('aiInput');if(!i)return;i.va
 async function aiSend(){
   const inp=document.getElementById('aiInput'); if(!inp)return;
   const text=(inp.value||'').trim(); if(!text)return;
-  const key=getApiKey(); if(!key){toast('Add your API key in the Files tab first');switchTab('files');return;}
+  if(!aiReady()){const c=aiCfg(); toast(c.kind==='webllm'?'No WebGPU here — try Chrome/Edge or another provider':(c.needsUrl&&!c.url?'Set the endpoint URL above':'Add your API key above')); return;}
   AI_TRANSCRIPT.push({role:'user',text}); AI_HISTORY.push({role:'user',content:text});
   inp.value=''; aiGrow(inp);
   AI_TRANSCRIPT.push({role:'assistant',text:'…'}); const idx=AI_TRANSCRIPT.length-1; aiRender();
   const send=document.getElementById('aiSend'); if(send)send.disabled=true;
   try{
-    const raw=await aiCall(key);
+    const raw=await aiCall(txt=>{AI_TRANSCRIPT[idx].text=txt;aiRender();});
     let obj=null; try{obj=parseLoose(raw)}catch(e){}
     if(obj&&obj.patch)aiApplyPatch(obj.patch);
     const reply=(obj&&typeof obj.reply==='string'&&obj.reply.trim())?obj.reply.trim():(obj?'Done — I updated your portfolio.':raw);
@@ -1834,19 +1876,51 @@ async function aiSend(){
     aiRender(); const s=document.getElementById('aiSend'); if(s)s.disabled=false;
   }
 }
-async function aiCall(key){
+function aiSnapshot(){
   const p=CONFIG.profile||{}, t=CONFIG.theme||{};
-  const snap={profile:{name:p.name,role:p.role,tagline:p.tagline,about:p.about,location:p.location,email:p.email,skills:p.skills,stats:p.stats},
+  return {profile:{name:p.name,role:p.role,tagline:p.tagline,about:p.about,location:p.location,email:p.email,skills:p.skills,stats:p.stats},
     projects:(CONFIG.projects||[]).map(x=>({id:x.id,title:x.title,desc:x.desc||x.summary||'',tags:x.tags,link:x.link})),
     theme:{accent:t.accent,mode:t.mode},layout:CONFIG.layout};
-  const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{
-    'content-type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-    body:JSON.stringify({model:AI_MODEL||'claude-opus-4-8',max_tokens:3072,
-      system:AI_SYSTEM+'\n\nCURRENT PORTFOLIO JSON:\n'+JSON.stringify(snap),
-      messages:AI_HISTORY.map(m=>({role:m.role,content:m.content}))})});
-  if(!res.ok){const t2=await res.text().catch(()=>'');throw new Error('HTTP '+res.status+' '+t2.slice(0,140));}
+}
+async function aiCall(onProg){
+  const c=aiCfg(); const sys=AI_SYSTEM+'\n\nCURRENT PORTFOLIO JSON:\n'+JSON.stringify(aiSnapshot());
+  if(c.kind==='anthropic')return anthropicCall(c,sys);
+  if(c.kind==='webllm')return webllmCall(c,sys,onProg);
+  return openaiCall(c,sys);
+}
+async function anthropicCall(c,sys){
+  if(!c.key)throw new Error('missing Anthropic key');
+  const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':c.key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+    body:JSON.stringify({model:c.model||'claude-opus-4-8',max_tokens:3072,system:sys,messages:AI_HISTORY.map(m=>({role:m.role,content:m.content}))})});
+  if(!res.ok){const t=await res.text().catch(()=>'');throw new Error('HTTP '+res.status+' '+t.slice(0,140));}
   const data=await res.json();
   return (data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('').trim();
+}
+async function openaiCall(c,sys){   // OpenRouter / Groq / local Ollama / LM Studio / custom
+  if(!c.url)throw new Error('missing endpoint URL');
+  const headers={'content-type':'application/json'};
+  if(c.key)headers['authorization']='Bearer '+c.key;
+  if(c.id==='openrouter'){headers['HTTP-Referer']=location.origin;headers['X-Title']='Portfolio Studio';}
+  const messages=[{role:'system',content:sys}].concat(AI_HISTORY.map(m=>({role:m.role,content:m.content})));
+  const res=await fetch(c.url,{method:'POST',headers,body:JSON.stringify({model:c.model,max_tokens:2048,messages})});
+  if(!res.ok){const t=await res.text().catch(()=>'');throw new Error('HTTP '+res.status+' '+t.slice(0,160));}
+  const data=await res.json();
+  return ((((data.choices||[])[0]||{}).message||{}).content||'').trim();
+}
+async function webllmEnsure(model,onProg){
+  if(!navigator.gpu)throw new Error('WebGPU not available');
+  if(WEBLLM_ENGINE&&WEBLLM_MODEL===model)return WEBLLM_ENGINE;
+  onProg&&onProg('Loading the in-browser model (first time downloads it)…');
+  const webllm=await import('https://esm.run/@mlc-ai/web-llm');
+  WEBLLM_ENGINE=await webllm.CreateMLCEngine(model,{initProgressCallback:r=>{onProg&&onProg('Loading model… '+Math.round((r.progress||0)*100)+'%');}});
+  WEBLLM_MODEL=model; return WEBLLM_ENGINE;
+}
+async function webllmCall(c,sys,onProg){
+  const eng=await webllmEnsure(c.model,onProg);
+  onProg&&onProg('Thinking…');
+  const messages=[{role:'system',content:sys}].concat(AI_HISTORY.map(m=>({role:m.role,content:m.content})));
+  const res=await eng.chat.completions.create({messages,max_tokens:2048});
+  return ((((res.choices||[])[0]||{}).message||{}).content||'').trim();
 }
 function aiApplyPatch(patch){
   if(!patch||typeof patch!=='object')return; let touched=false;
